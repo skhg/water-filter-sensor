@@ -28,7 +28,10 @@ const double HIGH_SAFE_WATER_LEVEL = 0.9;
 #define green_led 9
 // Note to self: On my Arduino board, A6 and A7 are not working. Do not use
 
-Q2HX711 load_sensor(A0, A1);
+#define load_data_pin A0
+#define load_clock_pin A1
+
+Q2HX711 load_sensor(load_data_pin, load_clock_pin);
 
 movingAvg smooth_weight(100);
 
@@ -64,13 +67,8 @@ void setup() {
   smooth_weight.begin();
 }
 
-
-
-
 int readWeight() {
-  fakeSensorTickerValue++; //todo replace with the real deal
-  
-  smooth_weight.reading(fakeSensorTickerValue);
+  smooth_weight.reading(load_sensor.read());
   return smooth_weight.getAvg();
 }
 
