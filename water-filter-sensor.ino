@@ -12,7 +12,8 @@ const double LOW_SAFE_WATER_LEVEL = 0.3;
 // The highest fill level (0.0 to 1.0) we aim to reach when we refill
 const double HIGH_SAFE_WATER_LEVEL = 0.9;
 
-
+// A calibration value that differs for every sensor. Whatever the sensor reads when no weight is applied
+const int TARE_VALUE = 8420;
 
 
 
@@ -68,12 +69,16 @@ void setup() {
 }
 
 int readWeight() {
-  smooth_weight.reading(load_sensor.read());
-  return smooth_weight.getAvg();
-}
 
-void debug(int weight){
-  Serial.println(weight);
+  int curr_weight = (load_sensor.read() / 1000) - TARE_VALUE;
+  smooth_weight.reading(curr_weight);
+  int smoothed =  smooth_weight.getAvg();
+
+  Serial.print(curr_weight);
+  Serial.print(",");
+  Serial.println(smoothed);
+  
+  return smoothed;
 }
 
 void bluePulse() {
@@ -133,8 +138,6 @@ void rgbPulse(boolean red, boolean green, boolean blue) {
 void loop() {
 
   int current_weight = readWeight();
-
-  debug(current_weight);
 
   if(current_weight <= low_safe_level) {
     bluePulse();
