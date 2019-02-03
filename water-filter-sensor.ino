@@ -1,21 +1,23 @@
 //User-configurable settings
 
 // The maximum weight of the system. Above this level, water will overflow.
-const int MAXIMUM_WATER_LEVEL = 1000;
+const int MAXIMUM_WATER_LEVEL = 1200;
 
 // The weight of the system when tap no longer flows out.
 const int MINIMUM_WATER_LEVEL = 0;
 
 // The fill level (0.0 to 1.0) below which we should alert to refill
-const double LOW_SAFE_WATER_LEVEL = 0.3;
+const double LOW_SAFE_WATER_FRACTION = 0.3;
 
 // The highest fill level (0.0 to 1.0) we aim to reach when we refill
-const double HIGH_SAFE_WATER_LEVEL = 0.9;
+const double HIGH_SAFE_WATER_FRACTION = 0.9;
 
 // A calibration value that differs for every sensor. Whatever the sensor reads when no weight is applied
-const int TARE_VALUE = 8461;
+//Whatever is displayed in serial monitor when the plate is empty must be ADDED to this number
+const int TARE_VALUE = 8486;
 
-
+// Enable for calibration
+const boolean DEBUG_ON = false;
 
 
 // No need to make any changes below here
@@ -40,7 +42,7 @@ int low_safe_level;
 int high_safe_level;
 
 //scaling factors for the relative brightness of the RGB LED's
-double masterScale = 0.5;
+double masterScale = 1;
 double blueScale = 0.2;
 double redScale = 1;
 double greenScale = 0.25;
@@ -57,8 +59,8 @@ int sensor_interval = 100; // Read the sensor every n'th cycle (deal with a sens
 void setup() {
 
   int range = MAXIMUM_WATER_LEVEL - MINIMUM_WATER_LEVEL;
-  low_safe_level = (range * LOW_SAFE_WATER_LEVEL) + MINIMUM_WATER_LEVEL;
-  high_safe_level = (range * HIGH_SAFE_WATER_LEVEL) + MINIMUM_WATER_LEVEL;
+  low_safe_level = (range * LOW_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
+  high_safe_level = (range * HIGH_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
   
   // LED pins are all outputs
   pinMode(blue_led, OUTPUT);
@@ -80,7 +82,20 @@ int readWeight() {
     int curr_weight = (load_sensor.read() / 1000) - TARE_VALUE;
     smooth_weight.reading(curr_weight);
 
-    Serial.println(curr_weight);
+    if(DEBUG_ON){
+      Serial.print(MINIMUM_WATER_LEVEL);
+      Serial.print(",");
+      Serial.print(low_safe_level);
+      Serial.print(",");
+      Serial.print(high_safe_level);
+      Serial.print(",");
+      Serial.print(MAXIMUM_WATER_LEVEL);
+      Serial.print(",");
+      Serial.print(curr_weight);
+      Serial.print(",");
+      Serial.println(smooth_weight.getAvg());
+    }
+    
   }
 
   sensor_cycle++;
