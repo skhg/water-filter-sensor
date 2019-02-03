@@ -24,9 +24,9 @@ const int TARE_VALUE = 8420;
 #include <Q2HX711.h>
 
 // The following must be connected to PWM pins in order to vary brightness
-#define blue_led 11
-#define red_led 10
-#define green_led 9
+#define blue_led 9
+#define red_led 11
+#define green_led 10
 // Note to self: On my Arduino board, A6 and A7 are not working. Do not use
 
 #define load_data_pin A0
@@ -35,8 +35,6 @@ const int TARE_VALUE = 8420;
 Q2HX711 load_sensor(load_data_pin, load_clock_pin);
 
 movingAvg smooth_weight(100);
-
-int fakeSensorTickerValue = 0; //todo replace with the real deal
 
 int low_safe_level;
 int high_safe_level;
@@ -149,5 +147,5 @@ void loop() {
     redPulse();
   }
 
-  delay(30);
+  delay(3);
 }
