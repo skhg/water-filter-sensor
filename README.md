@@ -5,7 +5,7 @@ Indicator light to show the water level within a ceramic water filter
 See the full Arduino C++ code in [water-filter-sensor.ino](water-filter-sensor.ino). 
 
 Dependencies:
- * [movingAvg](https://github.com/skhg/movingAvg)
+ * [movingAvg](https://github.com/JChristensen/movingAvg)
  * [Q2HX711](https://github.com/queuetue/Q2-HX711-Arduino-Library)
 
 ## Circuit
