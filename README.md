@@ -30,6 +30,10 @@ Other:
   * Drill and assorted bits
   * Various small pliers, screwdriver, common tools
 
+## Construction
+
+Basically the base of the 
+
 ## Code
 See the full Arduino C++ code in [water-filter-sensor.ino](water-filter-sensor.ino). 
 
