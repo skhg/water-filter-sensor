@@ -13,7 +13,7 @@ const double LOW_SAFE_WATER_LEVEL = 0.3;
 const double HIGH_SAFE_WATER_LEVEL = 0.9;
 
 // A calibration value that differs for every sensor. Whatever the sensor reads when no weight is applied
-const int TARE_VALUE = 8420;
+const int TARE_VALUE = 8461;
 
 
 
@@ -45,9 +45,13 @@ double blueScale = 0.2;
 double redScale = 1;
 double greenScale = 0.25;
   
-//params used only for controlling light pulse cycle
-int pulse_brightness = 0;    // how bright the LED is
-int fadeAmount = 10;    // how many points to fade the LED by
+//state used only for controlling light pulse cycle
+int pulse_brightness = 0;    // how bright the LED is during current cycle
+int fadeAmount = 1;    // how many points to fade the LED by
+
+//state used to determine when to read the weight sensor
+int sensor_cycle = 0; // Current state of the cycle for sensor reading
+int sensor_interval = 100; // Read the sensor every n'th cycle (deal with a sensor that reads slowly)
 
 // the setup routine runs once when you press reset:
 void setup() {
@@ -68,15 +72,21 @@ void setup() {
 
 int readWeight() {
 
-  int curr_weight = (load_sensor.read() / 1000) - TARE_VALUE;
-  smooth_weight.reading(curr_weight);
-  int smoothed =  smooth_weight.getAvg();
+  if(sensor_cycle == sensor_interval){
+    if(sensor_cycle >= sensor_interval){
+      sensor_cycle = 0;
+    }
 
-  Serial.print(curr_weight);
-  Serial.print(",");
-  Serial.println(smoothed);
-  
-  return smoothed;
+    int curr_weight = (load_sensor.read() / 1000) - TARE_VALUE;
+    smooth_weight.reading(curr_weight);
+
+    Serial.println(curr_weight);
+  }
+
+  sensor_cycle++;
+    
+  return smooth_weight.getAvg();
+
 }
 
 void bluePulse() {
@@ -147,5 +157,6 @@ void loop() {
     redPulse();
   }
 
-  delay(3);
+  delay(1);
+
 }
