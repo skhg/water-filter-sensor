@@ -5,6 +5,11 @@
  */
 
 /*
+ * Turn on debug output to allow for calibration. Turn off to stop the TX LED flashing
+ */
+const boolean DEBUG_ON = false;
+
+/*
  * This value differs for every sensor. The reading when no weight is applied to the system.
  * 
  * Whatever is displayed in serial monitor when the plate is empty must be ADDED to this number
@@ -47,11 +52,6 @@ const double LOW_SAFE_WATER_FRACTION = 0.3;
  * The highest fractional fill level (0.0 to 1.0) we aim to reach when we refill
  */
 const double HIGH_SAFE_WATER_FRACTION = 0.8;
-
-/*
- * Turn on debug output to allow for calibration
- */
-const boolean DEBUG_ON = false;
 
 /*
  * How many values to use for smoothing out the data and forming a moving average
