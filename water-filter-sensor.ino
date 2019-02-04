@@ -1,51 +1,151 @@
-//User-configurable settings
+/*
+ * CALIBRATION VALUES
+ * 
+ * All of these must be reset after disassembling and reassembling the base.
+ */
 
-// The maximum weight of the system. Above this level, water will overflow.
-const int MAXIMUM_WATER_LEVEL = 800;
+/*
+ * This value differs for every sensor. The reading when no weight is applied to the system.
+ * 
+ * Whatever is displayed in serial monitor when the plate is empty must be ADDED to this number
+ */ 
+const int TARE_VALUE = 8349;
 
-// The weight of the system when tap no longer flows out.
+/*
+ * The maximum weight of the system. Above this level, water will overflow.
+ * 
+ * (Residual in top tank + full lower tank)
+ */
+const int MAXIMUM_WATER_LEVEL = 1200;
+
+/*
+ * The weight of the system when tap no longer flows out.
+ * 
+ * (Residual in top tank + residual in lower tank)
+ */
 const int MINIMUM_WATER_LEVEL = 550;
 
-// The fill level (0.0 to 1.0) below which we should alert to refill
+
+
+
+
+
+
+
+/*
+ * USER PREFERENCES
+ * 
+ * Settings which can be adjusted depending on the desired display
+ */
+
+/*
+ * The fractional fill level (0.0 to 1.0) below which we should alert to refill (Blue flashing)
+ */
 const double LOW_SAFE_WATER_FRACTION = 0.3;
 
-// The highest fill level (0.0 to 1.0) we aim to reach when we refill
+/* 
+ * The highest fractional fill level (0.0 to 1.0) we aim to reach when we refill
+ */
 const double HIGH_SAFE_WATER_FRACTION = 0.8;
 
-// A calibration value that differs for every sensor. Whatever the sensor reads when no weight is applied
-//Whatever is displayed in serial monitor when the plate is empty must be ADDED to this number
-const int TARE_VALUE = 8486;
-
-// Enable for calibration
+/*
+ * Turn on debug output to allow for calibration
+ */
 const boolean DEBUG_ON = false;
 
+/*
+ * How many values to use for smoothing out the data and forming a moving average
+ */
+const int MOVING_AVERAGE_BUCKET_SIZE = 20;
 
-// No need to make any changes below here
+
+
+
+
+
+
+
+/*
+ * SYSTEM CONFIGURATION
+ * 
+ * How the Arduino's physical devices are set up.
+ */
+
+/*
+ * Pin positions for the RGB LED. These must be connected to PWM pins in order to vary brightness
+ * 
+ * PWM pin locations:
+ * https://www.arduino.cc/reference/en/language/functions/analog-io/analogwrite/
+ */
+#define BLUE_LED 9
+#define GREEN_LED 10
+#define RED_LED 11
+
+/*
+ * Pin positions for the HX-711 load sensor
+ * 
+ * These must be connected to analogue input pins.
+ * 
+ * Analogue input pins:
+ * https://www.arduino.cc/reference/en/language/functions/analog-io/analogread/
+ */
+#define LOAD_SENSOR_DATA A0
+#define LOAD_SENSOR_CLOCK A1
+
+/*
+ * LED total brightness factor
+ * 
+ * If your LED is too bright, reduce this value (0.0 to 1.0)
+ */
+const double LED_MASTER_SCALE = 1.0;
+
+/*
+ * LED relative brightness factors
+ * 
+ * Each of the RGB LED's components may appear to be slightly brighter than the others.
+ * Set the dimmest LED to 1.0 and adjust the others accordingly (0.0 to 1.0)
+ * 
+ */
+const double LED_BLUE_SCALE = 0.2;
+const double LED_RED_SCALE = 1;
+const double LED_GREEN_SCALE = 0.25;
+
+/*
+ * Load sensor read interval
+ * 
+ * Reading the load sensor may take a few milliseconds and doing this on each cycle may be unnecessary.
+ * This value allows you to read the sensor every n'th cycle
+ */
+const int LOAD_SENSOR_READ_INTERVAL = 100;
+
+/*
+ * Loop delay in milliseconds
+ * 
+ * If your LED flashes too quickly or too slowly, adjusting this value will change the delay until the next cycle.
+ */
+const int LOOP_DELAY = 1;
+
+
+
+
+
+ 
+
+/*
+ * APPLICATION CODE
+ * 
+ * No need to make any changes below here
+ */
 
 #include <movingAvg.h>
 #include <Q2HX711.h>
 
-// The following must be connected to PWM pins in order to vary brightness
-#define blue_led 9
-#define red_led 11
-#define green_led 10
-// Note to self: On my Arduino board, A6 and A7 are not working. Do not use
+Q2HX711 load_sensor(LOAD_SENSOR_DATA, LOAD_SENSOR_CLOCK);
 
-#define load_data_pin A0
-#define load_clock_pin A1
-
-Q2HX711 load_sensor(load_data_pin, load_clock_pin);
-
-movingAvg smooth_weight(20);
+movingAvg smooth_weight(MOVING_AVERAGE_BUCKET_SIZE);
 
 int low_safe_level;
 int high_safe_level;
-
-//scaling factors for the relative brightness of the RGB LED's
-double masterScale = 1;
-double blueScale = 0.2;
-double redScale = 1;
-double greenScale = 0.25;
   
 //state used only for controlling light pulse cycle
 int pulse_brightness = 0;    // how bright the LED is during current cycle
@@ -53,9 +153,7 @@ int fadeAmount = 1;    // how many points to fade the LED by
 
 //state used to determine when to read the weight sensor
 int sensor_cycle = 0; // Current state of the cycle for sensor reading
-int sensor_interval = 100; // Read the sensor every n'th cycle (deal with a sensor that reads slowly)
 
-// the setup routine runs once when you press reset:
 void setup() {
 
   int range = MAXIMUM_WATER_LEVEL - MINIMUM_WATER_LEVEL;
@@ -63,9 +161,9 @@ void setup() {
   high_safe_level = (range * HIGH_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
   
   // LED pins are all outputs
-  pinMode(blue_led, OUTPUT);
-  pinMode(green_led, OUTPUT);
-  pinMode(red_led, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
 
   Serial.begin(9600);
 
@@ -74,8 +172,8 @@ void setup() {
 
 int readWeight() {
 
-  if(sensor_cycle == sensor_interval){
-    if(sensor_cycle >= sensor_interval){
+  if(sensor_cycle == LOAD_SENSOR_READ_INTERVAL){
+    if(sensor_cycle >= LOAD_SENSOR_READ_INTERVAL){
       sensor_cycle = 0;
     }
 
@@ -122,19 +220,19 @@ void redPulse() {
 
 void setColours(boolean red, boolean green, boolean blue, int brightness) {
   if(blue) {
-    analogWrite(blue_led, brightness * masterScale * blueScale);
+    analogWrite(BLUE_LED, brightness * LED_MASTER_SCALE * LED_BLUE_SCALE);
   }else{
-    analogWrite(blue_led, 0);
+    analogWrite(BLUE_LED, 0);
   }
   if(red) {
-    analogWrite(red_led, brightness * masterScale * redScale);
+    analogWrite(RED_LED, brightness * LED_MASTER_SCALE * LED_RED_SCALE);
   }else{
-    analogWrite(red_led, 0);
+    analogWrite(RED_LED, 0);
   }
   if(green) {
-    analogWrite(green_led, brightness * masterScale * greenScale);
+    analogWrite(GREEN_LED, brightness * LED_MASTER_SCALE * LED_GREEN_SCALE);
   }else{
-    analogWrite(green_led, 0);
+    analogWrite(GREEN_LED, 0);
   }
 }
 
@@ -157,7 +255,6 @@ void rgbPulse(boolean red, boolean green, boolean blue) {
   }
 }
 
-// the loop routine runs over and over again forever:
 void loop() {
 
   int current_weight = readWeight();
@@ -172,6 +269,6 @@ void loop() {
     redPulse();
   }
 
-  delay(1);
+  delay(LOOP_DELAY);
 
 }
