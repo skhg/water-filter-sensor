@@ -1,16 +1,16 @@
 //User-configurable settings
 
 // The maximum weight of the system. Above this level, water will overflow.
-const int MAXIMUM_WATER_LEVEL = 1200;
+const int MAXIMUM_WATER_LEVEL = 800;
 
 // The weight of the system when tap no longer flows out.
-const int MINIMUM_WATER_LEVEL = 0;
+const int MINIMUM_WATER_LEVEL = 550;
 
 // The fill level (0.0 to 1.0) below which we should alert to refill
 const double LOW_SAFE_WATER_FRACTION = 0.3;
 
 // The highest fill level (0.0 to 1.0) we aim to reach when we refill
-const double HIGH_SAFE_WATER_FRACTION = 0.9;
+const double HIGH_SAFE_WATER_FRACTION = 0.8;
 
 // A calibration value that differs for every sensor. Whatever the sensor reads when no weight is applied
 //Whatever is displayed in serial monitor when the plate is empty must be ADDED to this number
@@ -36,7 +36,7 @@ const boolean DEBUG_ON = false;
 
 Q2HX711 load_sensor(load_data_pin, load_clock_pin);
 
-movingAvg smooth_weight(100);
+movingAvg smooth_weight(20);
 
 int low_safe_level;
 int high_safe_level;
