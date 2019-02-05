@@ -1,5 +1,5 @@
 # water-filter-sensor
-Indicator light to show the water fill level within a ceramic water filter
+An indicator light to show the water fill level within a ceramic water filter
 
 ## Concept
 We use a [ceramic water filter](https://en.wikipedia.org/wiki/Ceramic_water_filter) at home for our drinking water and ice-making. Normally we try to keep it full, so there's always about 2L available at any time. However to be sure we haven't over-filled, we have to remove the top section to see how much is left in the bottom. Obviously, this minor effort is totally unacceptable, so I built a sensor system to tell us how full the tank is.
@@ -36,6 +36,9 @@ Other:
 
 The sensor must be mounted between two plates in order to work. The [flexing](https://en.wikipedia.org/wiki/Load_cell) of the sensor as weight is applied is detected and converted to a weight reading. I built this out of 2 small bamboo chopping boards, which are light and strong. The rest of the wooden pieces I bought at [Bauhaus](https://www.bauhaus.info/)
 
+### Soldering the HX-711
+Many HX-711 sensors come in packs with a board and loose pins. I had never soldered anything except a broken [George Foreman](https://en.wikipedia.org/wiki/George_Foreman_Grill) before this project so it was quite an experience to learn how to do this. Fortunately YouTube is full of tutorial videos. References at the end.
+
 ### Lower board
 
 The lower board has four 3cm legs attached to keep it above any water that might collect on the counter. Near the centre it has two drilled holes to support the lower side of the sensor, which sits atop a small wooden block. On one side, a wider beam of wood provides a hinge to support half the filter's weight, and reduce the load on the sensor. This beam has some indentations to allow space for the LED module, and holes to fit in bolts that will hold on the top board.
@@ -65,4 +68,16 @@ This can also be viewed in the [Fritzing](http://fritzing.org/) software using t
 
 ## Calibration
 
+Depending on the tension in the bolts connecting the board, sensor and support beam, the force applied to the sensor may vary quite a lot. It's important to recalibrate the sensor after taking the system apart or changing it's location.
 
+By enabling `DEBUG` mode and viewing the output we can determine what the sensor reads when the tanks are full or empty, and use this to change the parameters defined at the top of [water-filter-sensor.ino](water-filter-sensor.ino).
+
+Debug output also prints static lines which can be viewed in the Arduino [plotter](https://learn.adafruit.com/experimenters-guide-for-metro/circ08-using%20the%20arduino%20serial%20plotter) to show the various limits or trigger levels that have been set. Filling and emptying the tank can easily show how the level varies in the real-time graph.
+
+## References
+These tutorials proved useful during the project
+
+* [Soldering Tutorial for Beginners: Five Easy Steps](https://www.youtube.com/watch?v=Qps9woUGkvI)
+* [How to Remove Solder](https://www.youtube.com/watch?v=-lnRf2biz50)
+* [HX711 Load Cell Amplifier Interface with Arduino](https://www.hackster.io/MOHAN_CHANDALURU/hx711-load-cell-amplifier-interface-with-arduino-fa47f3)
+* [Load Cell Amplifier HX711 Breakout Hookup Guide](https://learn.sparkfun.com/tutorials/load-cell-amplifier-hx711-breakout-hookup-guide/all)
