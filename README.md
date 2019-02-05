@@ -74,6 +74,10 @@ By enabling `DEBUG` mode and viewing the output we can determine what the sensor
 
 Debug output also prints static lines which can be viewed in the Arduino [plotter](https://learn.adafruit.com/experimenters-guide-for-metro/circ08-using%20the%20arduino%20serial%20plotter) to show the various limits or trigger levels that have been set. Filling and emptying the tank can easily show how the level varies in the real-time graph.
 
+### Configuration
+
+Many other configuration options are available at the top of [water-filter-sensor.ino](water-filter-sensor.ino) including relative LED brightness, smoothness or accuracy of sensor data, and at what levels you want to get high/low water alerts. 
+
 ## References
 These tutorials proved useful during the project
 
