@@ -21,7 +21,7 @@ const int TARE_VALUE = 8349;
  * 
  * (Residual in top tank + full lower tank)
  */
-const int MAXIMUM_WATER_LEVEL = 1020;
+const int MAXIMUM_WATER_LEVEL = 940;
 
 /*
  * The weight of the system when tap no longer flows out.
