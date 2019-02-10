@@ -4,12 +4,12 @@ An indicator light to show the water fill level within a ceramic water filter
 ## Concept
 We use a [ceramic water filter](https://en.wikipedia.org/wiki/Ceramic_water_filter) at home for our drinking water and ice-making. Normally we try to keep it full, so there's always about 2L available at any time. However to be sure we haven't over-filled, we have to remove the top section to see how much is left in the bottom. Obviously, this minor effort is totally unacceptable, so I built a sensor system to tell us how full the tank is.
 
-PHOTO OF THE FINISHED THING HERE
+![Finished project](docs/photos/IMG_4630.jpg "Finished project")
 
 ## Overview
 The water filter now sits on top of a mounting frame, under which there is a HX-711 compatible weight sensor. Alongside the base of the filter, an RGB LED displays different colours to indicate fill level or warning states.
 
-DIAGRAM OF THE SYSTEM HERE
+![Diagram](docs/fill_levels.png "Diagram")
 
 ## Materials required
 Electronics
@@ -39,19 +39,27 @@ The sensor must be mounted between two plates in order to work. The [flexing](ht
 ### Soldering the HX-711
 Many HX-711 sensors come in packs with a board and loose pins. I had never soldered anything except a broken [George Foreman](https://en.wikipedia.org/wiki/George_Foreman_Grill) before this project so it was quite an experience to learn how to do this. Fortunately YouTube is full of tutorial videos. References at the end.
 
+![HX711](docs/photos/IMG_1149.jpg "Bare sensor")
+
 ### Lower board
 
 The lower board has four 3cm legs attached to keep it above any water that might collect on the counter. Near the centre it has two drilled holes to support the lower side of the sensor, which sits atop a small wooden block. On one side, a wider beam of wood provides a hinge to support half the filter's weight, and reduce the load on the sensor. This beam has some indentations to allow space for the LED module, and holes to fit in bolts that will hold on the top board.
 
+![Unfolded](docs/photos/IMG_1173.jpg "Unfolded base")
+
 ### Upper board
 
 This board will seat the filter, so on top it has four small wooden blocks to provide alignment for the filter's base. The filter should be aligned centrally so the weight is evenly distributed between the sensor and the supporting beam. Otherwise recalibration would be needed every time the filter is moved. On one side two holes fit the bolts that connect the top board to the other side of the sensor. On the other side is the large hole where the LED will poke through.
+
+![Top alignment points](docs/photos/IMG_1155.jpg "Alignment points")
 
 On the underside, two mini breadboards hold the Arduino, the HX-711 board, and their connections. They're attached to the board with narrow bolts so their position could be adjusted later. On the side which sits above the support beam, the LED hole has a chunk taken out near it, to allow the module and connecting cables space to fit.
 
 ### Mounting
 
 After bolting together the boards and tidying the cables out of the way, the water filter can be sat on top. Nice.
+
+![Mounted](docs/photos/IMG_4626.jpg "Mounted")
 
 ## Code
 See the full Arduino C++ code in [water-filter-sensor.ino](water-filter-sensor.ino). 
