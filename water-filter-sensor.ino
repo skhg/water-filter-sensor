@@ -6,29 +6,25 @@
 
 /*
  * Turn on debug output to allow for calibration. Turn off to stop the TX LED flashing
+ * 
+ * Values format:
+ * MINIMUM_WATER_LEVEL, LOW_SAFE_LEVEL, HIGH_SAFE_LEVEL, MAXIMUM_WATER_LEVEL, CURRENT_WEIGHT, CURRENT_WEIGHT_SMOOTHED_AVERAGE
  */
 const boolean DEBUG_ON = false;
-
-/*
- * This value differs for every sensor. The reading when no weight is applied to the system.
- * 
- * Whatever is displayed in serial monitor when the plate is empty must be ADDED to this number
- */ 
-const int TARE_VALUE = 8349;
 
 /*
  * The maximum weight of the system. Above this level, water will overflow.
  * 
  * (Residual in top tank + full lower tank)
  */
-const int MAXIMUM_WATER_LEVEL = 940;
+const int MAXIMUM_WATER_LEVEL = 9345;
 
 /*
  * The weight of the system when tap no longer flows out.
  * 
  * (Residual in top tank + residual in lower tank)
  */
-const int MINIMUM_WATER_LEVEL = 770;
+const int MINIMUM_WATER_LEVEL = 9125;
 
 
 
@@ -177,7 +173,7 @@ int readWeight() {
       sensor_cycle = 0;
     }
 
-    int curr_weight = (load_sensor.read() / 1000) - TARE_VALUE;
+    int curr_weight = (load_sensor.read() / 1000);
     smooth_weight.reading(curr_weight);
 
     if(DEBUG_ON){
