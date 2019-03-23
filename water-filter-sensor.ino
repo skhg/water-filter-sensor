@@ -24,7 +24,7 @@ const int MAXIMUM_WATER_LEVEL = 9345;
  * 
  * (Residual in top tank + residual in lower tank)
  */
-const int MINIMUM_WATER_LEVEL = 9125;
+const int MINIMUM_WATER_LEVEL = 9179;
 
 
 
