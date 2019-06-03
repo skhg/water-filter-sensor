@@ -17,14 +17,14 @@ const boolean DEBUG_ON = true;
  * 
  * (Residual in top tank + full lower tank)
  */
-const int MAXIMUM_WATER_LEVEL = 9682;
+const int MAXIMUM_WATER_LEVEL = 9350;
 
 /*
  * The weight of the system when tap no longer flows out.
  * 
  * (Residual in top tank + residual in lower tank)
  */
-const int MINIMUM_WATER_LEVEL = 9409;
+const int MINIMUM_WATER_LEVEL = 9080;
 
 
 
@@ -42,12 +42,12 @@ const int MINIMUM_WATER_LEVEL = 9409;
 /*
  * The fractional fill level (0.0 to 1.0) below which we should alert to refill (Blue flashing)
  */
-const double LOW_SAFE_WATER_FRACTION = 0.3;
+const double LOW_SAFE_WATER_FRACTION = 0.2;
 
 /* 
  * The highest fractional fill level (0.0 to 1.0) we aim to reach when we refill
  */
-const double HIGH_SAFE_WATER_FRACTION = 0.8;
+const double HIGH_SAFE_WATER_FRACTION = 0.5;
 
 /*
  * How many values to use for smoothing out the data and forming a moving average
