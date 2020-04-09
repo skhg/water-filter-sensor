@@ -5,26 +5,26 @@
  */
 
 /*
- * Turn on debug output to allow for calibration. Turn off to stop the TX LED flashing
+ * Turn on debug output to allow for calibration.
  * 
  * Values format:
  * MINIMUM_WATER_LEVEL, LOW_SAFE_LEVEL, HIGH_SAFE_LEVEL, MAXIMUM_WATER_LEVEL, CURRENT_WEIGHT, CURRENT_WEIGHT_SMOOTHED_AVERAGE
  */
-const boolean DEBUG_ON = false;
+const boolean DEBUG_ON = true;
 
 /*
  * The maximum weight of the system. Above this level, water will overflow.
  * 
  * (Residual in top tank + full lower tank)
  */
-const int MAXIMUM_WATER_LEVEL = 9345;
+const int MAXIMUM_WATER_LEVEL = 121000;
 
 /*
  * The weight of the system when tap no longer flows out.
  * 
  * (Residual in top tank + residual in lower tank)
  */
-const int MINIMUM_WATER_LEVEL = 9179;
+const int MINIMUM_WATER_LEVEL = 117000;
 
 
 
@@ -40,7 +40,7 @@ const int MINIMUM_WATER_LEVEL = 9179;
  */
 
 /*
- * The fractional fill level (0.0 to 1.0) below which we should alert to refill (Blue flashing)
+ * The fractional fill level (0.0 to 1.0) below which we should alert to refill
  */
 const double LOW_SAFE_WATER_FRACTION = 0.3;
 
@@ -68,16 +68,6 @@ const int MOVING_AVERAGE_BUCKET_SIZE = 20;
  */
 
 /*
- * Pin positions for the RGB LED. These must be connected to PWM pins in order to vary brightness
- * 
- * PWM pin locations:
- * https://www.arduino.cc/reference/en/language/functions/analog-io/analogwrite/
- */
-#define BLUE_LED 9
-#define GREEN_LED 10
-#define RED_LED 11
-
-/*
  * Pin positions for the HX-711 load sensor
  * 
  * These must be connected to analogue input pins.
@@ -85,26 +75,8 @@ const int MOVING_AVERAGE_BUCKET_SIZE = 20;
  * Analogue input pins:
  * https://www.arduino.cc/reference/en/language/functions/analog-io/analogread/
  */
-#define LOAD_SENSOR_DATA A0
-#define LOAD_SENSOR_CLOCK A1
-
-/*
- * LED total brightness factor
- * 
- * If your LED is too bright, reduce this value (0.0 to 1.0)
- */
-const double LED_MASTER_SCALE = 1.0;
-
-/*
- * LED relative brightness factors
- * 
- * Each of the RGB LED's components may appear to be slightly brighter than the others.
- * Set the dimmest LED to 1.0 and adjust the others accordingly (0.0 to 1.0)
- * 
- */
-const double LED_BLUE_SCALE = 0.2;
-const double LED_RED_SCALE = 1;
-const double LED_GREEN_SCALE = 0.25;
+#define LOAD_SENSOR_DATA 14  // D5 on NodeMCU ESP8266 Lolin v3
+#define LOAD_SENSOR_CLOCK 12 // D6 on NodeMCU ESP8266 Lolin v3
 
 /*
  * Load sensor read interval
@@ -115,12 +87,11 @@ const double LED_GREEN_SCALE = 0.25;
 const int LOAD_SENSOR_READ_INTERVAL = 100;
 
 /*
- * Loop delay in milliseconds
- * 
- * If your LED flashes too quickly or too slowly, adjusting this value will change the delay until the next cycle.
+ * Screen dimensions
  */
-const int LOOP_DELAY = 1;
-
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
 
 
@@ -134,48 +105,51 @@ const int LOOP_DELAY = 1;
  */
 
 #include <movingAvg.h>
-#include <Q2HX711.h>
+#include "HX711.h"
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-Q2HX711 load_sensor(LOAD_SENSOR_DATA, LOAD_SENSOR_CLOCK);
+HX711 load_sensor;
 
 movingAvg smooth_weight(MOVING_AVERAGE_BUCKET_SIZE);
 
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
 int low_safe_level;
 int high_safe_level;
-  
-//state used only for controlling light pulse cycle
-int pulse_brightness = 0;    // how bright the LED is during current cycle
-int fadeAmount = 1;    // how many points to fade the LED by
-
-//state used to determine when to read the weight sensor
-int sensor_cycle = 0; // Current state of the cycle for sensor reading
 
 void setup() {
 
   int range = MAXIMUM_WATER_LEVEL - MINIMUM_WATER_LEVEL;
   low_safe_level = (range * LOW_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
   high_safe_level = (range * HIGH_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
-  
-  // LED pins are all outputs
-  pinMode(BLUE_LED, OUTPUT);
-  pinMode(GREEN_LED, OUTPUT);
-  pinMode(RED_LED, OUTPUT);
 
   Serial.begin(9600);
 
+  delay(1000);
+  
   smooth_weight.begin();
+  load_sensor.begin(LOAD_SENSOR_DATA, LOAD_SENSOR_CLOCK);
+
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+
+  while(!load_sensor.is_ready()){
+    Serial.println("Waiting for load sensor...");
+    delay(1000);
+  }
 }
 
 int readWeight() {
 
-  if(sensor_cycle == LOAD_SENSOR_READ_INTERVAL){
-    if(sensor_cycle >= LOAD_SENSOR_READ_INTERVAL){
-      sensor_cycle = 0;
-    }
-
-    int curr_weight = (load_sensor.read() / 1000);
+  if (load_sensor.is_ready()) {
+    int curr_weight = (load_sensor.read() / 10);
     smooth_weight.reading(curr_weight);
-
+  
     if(DEBUG_ON){
       Serial.print(MINIMUM_WATER_LEVEL);
       Serial.print(",");
@@ -189,82 +163,65 @@ int readWeight() {
       Serial.print(",");
       Serial.println(smooth_weight.getAvg());
     }
-    
   }
-
-  sensor_cycle++;
     
   return smooth_weight.getAvg();
 
 }
 
-void bluePulse() {
-  rgbPulse(false, false, true);
+void drawText(String text) {
+  display.clearDisplay();
+
+//  display.setTextSize(1);             // Normal 1:1 pixel scale
+//  display.setTextColor(SSD1306_WHITE);        // Draw white text
+//  display.setCursor(0,0);             // Start at top-left corner
+//  display.println(F("Hello, world!"));
+//
+//  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
+//  display.println(3.141592);
+
+  display.setTextSize(5);             // Draw 2X-scale text
+  display.setCursor(0,20); 
+  display.setTextColor(SSD1306_WHITE);
+  display.println(text);
+//  display.print(F("0x")); display.println(0xDEADBEEF, HEX);
+
+  display.display();
+  delay(50);
 }
 
-void solidGreen() {
-  rgbSolid(false, true, false);
-}
+int getCurrentFillPercent() {
+  int current_weight = readWeight();
 
-void solidBlue() {
-  rgbSolid(false, false, true);
-}
-
-void redPulse() {
-  rgbPulse(true, false, false);
-}
-
-void setColours(boolean red, boolean green, boolean blue, int brightness) {
-  if(blue) {
-    analogWrite(BLUE_LED, brightness * LED_MASTER_SCALE * LED_BLUE_SCALE);
-  }else{
-    analogWrite(BLUE_LED, 0);
+  if(current_weight <= MINIMUM_WATER_LEVEL){
+    return 0;
   }
-  if(red) {
-    analogWrite(RED_LED, brightness * LED_MASTER_SCALE * LED_RED_SCALE);
-  }else{
-    analogWrite(RED_LED, 0);
-  }
-  if(green) {
-    analogWrite(GREEN_LED, brightness * LED_MASTER_SCALE * LED_GREEN_SCALE);
-  }else{
-    analogWrite(GREEN_LED, 0);
-  }
-}
 
-void rgbSolid(boolean red, boolean green, boolean blue) {
-  int full_brightness = 255;
-  
-  setColours(red, green, blue, full_brightness);
-}
+  double fraction = ((double)current_weight - (double)MINIMUM_WATER_LEVEL) / ((double)MAXIMUM_WATER_LEVEL - (double)MINIMUM_WATER_LEVEL) * 100;
 
-void rgbPulse(boolean red, boolean green, boolean blue) {
-
-  setColours(red, green, blue, pulse_brightness);
-  
-  // change the brightness for next time through the loop:
-  pulse_brightness = pulse_brightness + fadeAmount;
-
-  // reverse the direction of the fading at the ends of the fade:
-  if (pulse_brightness <= 0 || pulse_brightness >= 255) {
-    fadeAmount = -fadeAmount;
-  }
+  return (int)fraction;
 }
 
 void loop() {
 
-  int current_weight = readWeight();
+//  int current_weight = readWeight();
 
-  if(current_weight <= low_safe_level) {
-    bluePulse();
-  } else if(current_weight > low_safe_level && current_weight <= high_safe_level) {
-    solidBlue();
-  } else if(current_weight > high_safe_level && current_weight <= MAXIMUM_WATER_LEVEL) {
-    solidGreen();
-  } else if(current_weight > MAXIMUM_WATER_LEVEL) {
-    redPulse();
-  }
+  int fillPercent = getCurrentFillPercent();
 
-  delay(LOOP_DELAY);
+  String percentText = String(fillPercent) + "%";
+    
+  drawText(percentText);
+  
+//  if(current_weight <= low_safe_level) {
+//    bluePulse();
+//  } else if(current_weight > low_safe_level && current_weight <= high_safe_level) {
+//    solidBlue();
+//  } else if(current_weight > high_safe_level && current_weight <= MAXIMUM_WATER_LEVEL) {
+//    solidGreen();
+//  } else if(current_weight > MAXIMUM_WATER_LEVEL) {
+//    redPulse();
+//  }
+
+//  delay(LOOP_DELAY);
 
 }
