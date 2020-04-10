@@ -44,6 +44,16 @@ const int MINIMUM_WATER_LEVEL = 117000;
  */
 const int MOVING_AVERAGE_BUCKET_SIZE = 20;
 
+/**
+ * IP Address and port to send data to
+ */
+#define IP_1 192
+#define IP_2 168
+#define IP_3 178
+#define IP_4 29
+#define IP_PORT 8080
+
+
 
 
 
@@ -74,7 +84,7 @@ const int MOVING_AVERAGE_BUCKET_SIZE = 20;
  * Reading the load sensor may take a few milliseconds and doing this on each cycle may be unnecessary.
  * This value allows you to read the sensor every n'th cycle
  */
-const int LOAD_SENSOR_READ_INTERVAL = 100;
+const int LOAD_SENSOR_TRANSMIT_INTERVAL = 10;
 
 /*
  * Screen dimensions
@@ -83,6 +93,15 @@ const int LOAD_SENSOR_READ_INTERVAL = 100;
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
+/**
+ * Delay before reboot
+ */
+#define REBOOT_DELAY_MS 1000
+
+/**
+ * How many seconds to wait before WiFi connection is established, or the system will reboot
+ */
+#define WIFI_CONNECT_TIMEOUT_SECONDS 30
 
 
 
@@ -98,15 +117,18 @@ const int LOAD_SENSOR_READ_INTERVAL = 100;
 #include "HX711.h"
 #include <SPI.h>
 #include <Wire.h>
+#include<ESP8266WiFi.h> 
+#include<home_wifi.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
 HX711 load_sensor;
-
+WiFiClient client;
+IPAddress server(IP_1,IP_2,IP_3,IP_4);
 movingAvg smooth_weight(MOVING_AVERAGE_BUCKET_SIZE);
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
+int transmit_cycle = 0;
 
 
 void setup() {
@@ -170,9 +192,7 @@ void drawText(String text, int textSize) {
   delay(50);
 }
 
-int getCurrentFillPercent() {
-  int current_weight = readWeight();
-
+int getCurrentFillPercent(int current_weight) {
   if(current_weight <= MINIMUM_WATER_LEVEL){
     return 0;
   }
@@ -183,10 +203,94 @@ int getCurrentFillPercent() {
 }
 
 void loop() {
-  int fillPercent = getCurrentFillPercent();
+  connectToWifi();
+
+  int currentWeight = readWeight();
+  int fillPercent = getCurrentFillPercent(currentWeight);
 
   String percentText = String(fillPercent) + "%";
     
   drawText(percentText, 5);
 
+  transmitReading(currentWeight, fillPercent);
+
+}
+
+void transmitReading(int weight, int fillPercent) {
+
+  if(transmit_cycle == LOAD_SENSOR_TRANSMIT_INTERVAL){
+    if(transmit_cycle >= LOAD_SENSOR_TRANSMIT_INTERVAL){
+      transmit_cycle = 0;
+    }
+
+    String json = "{\"load\":"+String(weight)+",\"fillPercentage\":"+String(fillPercent)+"}";
+    
+    if (client.connect(server, IP_PORT)) {      
+      // Make a HTTP request:
+      client.println("POST /kitchen/water-filter HTTP/1.0");
+      client.println("Content-Type: application/json");
+      client.print("Content-Length: ");
+      client.println(json.length());
+      client.println();
+      client.println(json);
+      client.println();
+      client.stop();
+    }else{
+      Serial.println("ERROR: Failed to connect");
+      reboot();
+    }
+    
+  }
+
+  transmit_cycle++; 
+}
+
+void reboot(){
+  delay(REBOOT_DELAY_MS);
+  Serial.println("Rebooting...");
+  ESP.restart();
+}
+
+
+void connectToWifi(){
+  String wifiConnectionInfo = "Connectingto WiFi"; //Newline wrap on the OLED makes this appear correctly
+  
+  if(WiFi.status() == WL_CONNECTED){
+    return;  
+  }
+
+  drawText(wifiConnectionInfo, 2);
+  
+  Serial.print("Connecting to ");
+  Serial.println(WIFI_SSID); 
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  int connectAttempts = 0;
+  int connectRetryInterval = 500;
+  int rebootCountdown = WIFI_CONNECT_TIMEOUT_SECONDS * 1000;
+
+  String dotsString = "";
+  
+  while (WiFi.status() != WL_CONNECTED) {
+
+    if(dotsString.length() < 3){
+      dotsString = dotsString + ".";
+    }else{
+      dotsString = "";
+    }
+    
+    drawText(wifiConnectionInfo + dotsString, 2);
+    delay(connectRetryInterval);
+    
+    Serial.print(".");
+
+    rebootCountdown = rebootCountdown - connectRetryInterval;
+    
+    if(rebootCountdown < 0) {
+      reboot();
+    }
+  }
+  
+  Serial.println("");
+  Serial.println("WiFi connected"); 
 }
