@@ -8,7 +8,7 @@
  * Turn on debug output to allow for calibration.
  * 
  * Values format:
- * MINIMUM_WATER_LEVEL, LOW_SAFE_LEVEL, HIGH_SAFE_LEVEL, MAXIMUM_WATER_LEVEL, CURRENT_WEIGHT, CURRENT_WEIGHT_SMOOTHED_AVERAGE
+ * MINIMUM_WATER_LEVEL, MAXIMUM_WATER_LEVEL, CURRENT_WEIGHT, CURRENT_WEIGHT_SMOOTHED_AVERAGE
  */
 const boolean DEBUG_ON = true;
 
@@ -38,16 +38,6 @@ const int MINIMUM_WATER_LEVEL = 117000;
  * 
  * Settings which can be adjusted depending on the desired display
  */
-
-/*
- * The fractional fill level (0.0 to 1.0) below which we should alert to refill
- */
-const double LOW_SAFE_WATER_FRACTION = 0.3;
-
-/* 
- * The highest fractional fill level (0.0 to 1.0) we aim to reach when we refill
- */
-const double HIGH_SAFE_WATER_FRACTION = 0.8;
 
 /*
  * How many values to use for smoothing out the data and forming a moving average
@@ -117,31 +107,34 @@ movingAvg smooth_weight(MOVING_AVERAGE_BUCKET_SIZE);
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-int low_safe_level;
-int high_safe_level;
+
 
 void setup() {
-
-  int range = MAXIMUM_WATER_LEVEL - MINIMUM_WATER_LEVEL;
-  low_safe_level = (range * LOW_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
-  high_safe_level = (range * HIGH_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
-
   Serial.begin(9600);
 
-  delay(1000);
+  setupScreen();
+  drawText("Booting...", 3);
+  
+  int range = MAXIMUM_WATER_LEVEL - MINIMUM_WATER_LEVEL;
+
+  delay(1000); // Give the weight sensor a moment to initialise
   
   smooth_weight.begin();
   load_sensor.begin(LOAD_SENSOR_DATA, LOAD_SENSOR_CLOCK);
-
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
-  }
 
   while(!load_sensor.is_ready()){
     Serial.println("Waiting for load sensor...");
     delay(1000);
   }
+}
+
+void setupScreen() {
+  
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+  
 }
 
 int readWeight() {
@@ -152,10 +145,6 @@ int readWeight() {
   
     if(DEBUG_ON){
       Serial.print(MINIMUM_WATER_LEVEL);
-      Serial.print(",");
-      Serial.print(low_safe_level);
-      Serial.print(",");
-      Serial.print(high_safe_level);
       Serial.print(",");
       Serial.print(MAXIMUM_WATER_LEVEL);
       Serial.print(",");
@@ -169,22 +158,13 @@ int readWeight() {
 
 }
 
-void drawText(String text) {
+void drawText(String text, int textSize) {
   display.clearDisplay();
 
-//  display.setTextSize(1);             // Normal 1:1 pixel scale
-//  display.setTextColor(SSD1306_WHITE);        // Draw white text
-//  display.setCursor(0,0);             // Start at top-left corner
-//  display.println(F("Hello, world!"));
-//
-//  display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Draw 'inverse' text
-//  display.println(3.141592);
-
-  display.setTextSize(5);             // Draw 2X-scale text
-  display.setCursor(0,20); 
+  display.setTextSize(textSize);
+  display.setCursor(0,20);
   display.setTextColor(SSD1306_WHITE);
   display.println(text);
-//  display.print(F("0x")); display.println(0xDEADBEEF, HEX);
 
   display.display();
   delay(50);
@@ -203,25 +183,10 @@ int getCurrentFillPercent() {
 }
 
 void loop() {
-
-//  int current_weight = readWeight();
-
   int fillPercent = getCurrentFillPercent();
 
   String percentText = String(fillPercent) + "%";
     
-  drawText(percentText);
-  
-//  if(current_weight <= low_safe_level) {
-//    bluePulse();
-//  } else if(current_weight > low_safe_level && current_weight <= high_safe_level) {
-//    solidBlue();
-//  } else if(current_weight > high_safe_level && current_weight <= MAXIMUM_WATER_LEVEL) {
-//    solidGreen();
-//  } else if(current_weight > MAXIMUM_WATER_LEVEL) {
-//    redPulse();
-//  }
-
-//  delay(LOOP_DELAY);
+  drawText(percentText, 5);
 
 }
