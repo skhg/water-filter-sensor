@@ -13,18 +13,18 @@
 const boolean DEBUG_ON = true;
 
 /*
- * The maximum weight of the system. Above this level, water will overflow.
+ * The maximum weight of the system. Above this level, water will overflow. Updated by the data logger.
  * 
  * (Residual in top tank + full lower tank)
  */
-const int MAXIMUM_WATER_LEVEL = 121000;
+int MAXIMUM_WATER_LEVEL = 121000;
 
 /*
- * The weight of the system when tap no longer flows out.
+ * The weight of the system when tap no longer flows out. Updated by the data logger.
  * 
  * (Residual in top tank + residual in lower tank)
  */
-const int MINIMUM_WATER_LEVEL = 117000;
+int MINIMUM_WATER_LEVEL = 117000;
 
 
 
@@ -84,7 +84,7 @@ const int MOVING_AVERAGE_BUCKET_SIZE = 20;
  * Reading the load sensor may take a few milliseconds and doing this on each cycle may be unnecessary.
  * This value allows you to read the sensor every n'th cycle
  */
-const int LOAD_SENSOR_TRANSMIT_INTERVAL = 10;
+const int LOAD_SENSOR_TRANSMIT_INTERVAL = 50;
 
 /*
  * Screen dimensions
