@@ -1,5 +1,5 @@
-# water-filter-sensor
-A smart(er) ceramic water filter for my kitchen.
+# water-filter-sensor (v1)
+An indicator light to show the water fill level within a ceramic water filter. This was the first attempt. Refer to arduino code from this commit or before https://github.com/skhg/water-filter-sensor/commit/32b0eb5a3d64f30f886e5c977186836242a59f4d . master branch contains the second effort at doing this.
 
 ## Concept
 We use a [ceramic water filter](https://en.wikipedia.org/wiki/Ceramic_water_filter) at home for our drinking water and ice-making. Normally we try to keep it full, so there's always about 2L available at any time. However to be sure we haven't over-filled, we have to remove the top section to see how much is left in the bottom. Obviously, this minor effort is totally unacceptable, so I built a sensor system to tell us how full the tank is.
