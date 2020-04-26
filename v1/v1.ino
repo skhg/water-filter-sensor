@@ -10,21 +10,21 @@
  * Values format:
  * MINIMUM_WATER_LEVEL, LOW_SAFE_LEVEL, HIGH_SAFE_LEVEL, MAXIMUM_WATER_LEVEL, CURRENT_WEIGHT, CURRENT_WEIGHT_SMOOTHED_AVERAGE
  */
-const boolean DEBUG_ON = true;
+const boolean DEBUG_ON = false;
 
 /*
  * The maximum weight of the system. Above this level, water will overflow.
  * 
  * (Residual in top tank + full lower tank)
  */
-const int MAXIMUM_WATER_LEVEL = 9350;
+const int MAXIMUM_WATER_LEVEL = 9345;
 
 /*
  * The weight of the system when tap no longer flows out.
  * 
  * (Residual in top tank + residual in lower tank)
  */
-const int MINIMUM_WATER_LEVEL = 9080;
+const int MINIMUM_WATER_LEVEL = 9179;
 
 
 
@@ -42,38 +42,51 @@ const int MINIMUM_WATER_LEVEL = 9080;
 /*
  * The fractional fill level (0.0 to 1.0) below which we should alert to refill (Blue flashing)
  */
-const double LOW_SAFE_WATER_FRACTION = 0.2;
+const double LOW_SAFE_WATER_FRACTION = 0.3;
 
 /* 
  * The highest fractional fill level (0.0 to 1.0) we aim to reach when we refill
  */
-const double HIGH_SAFE_WATER_FRACTION = 0.5;
+const double HIGH_SAFE_WATER_FRACTION = 0.8;
 
 /*
  * How many values to use for smoothing out the data and forming a moving average
  */
 const int MOVING_AVERAGE_BUCKET_SIZE = 20;
 
-/**
- * IP Address and port to send data to
+
+
+
+
+
+
+
+/*
+ * SYSTEM CONFIGURATION
+ * 
+ * How the Arduino's physical devices are set up.
  */
-#define IP_1 192
-#define IP_2 168
-#define IP_3 178
-#define IP_4 29
-#define IP_PORT 8081
 
-/**
- * No need to make further changes below here
+/*
+ * Pin positions for the RGB LED. These must be connected to PWM pins in order to vary brightness
+ * 
+ * PWM pin locations:
+ * https://www.arduino.cc/reference/en/language/functions/analog-io/analogwrite/
  */
+#define BLUE_LED 9
+#define GREEN_LED 10
+#define RED_LED 11
 
-
-
-const int LOAD_SENSOR_READ_INTERVAL = 100;
-const int LOAD_SENSOR_TRANSMIT_INTERVAL = 1000;
-
-
-
+/*
+ * Pin positions for the HX-711 load sensor
+ * 
+ * These must be connected to analogue input pins.
+ * 
+ * Analogue input pins:
+ * https://www.arduino.cc/reference/en/language/functions/analog-io/analogread/
+ */
+#define LOAD_SENSOR_DATA A0
+#define LOAD_SENSOR_CLOCK A1
 
 /*
  * LED total brightness factor
@@ -89,88 +102,56 @@ const double LED_MASTER_SCALE = 1.0;
  * Set the dimmest LED to 1.0 and adjust the others accordingly (0.0 to 1.0)
  * 
  */
-const double LED_BLUE_SCALE = 1;
+const double LED_BLUE_SCALE = 0.2;
 const double LED_RED_SCALE = 1;
-const double LED_GREEN_SCALE = 1;
-
-
-
-/**
- * System configuration values.
- * 
- * These are unlikely to be needed to be changed after development is complete
- */
-
-/**
- * Short wait on startup to try to prevent the BMP180 sensor for returning bad data
- */
-#define STARTUP_DELAY_MS 5000
-
-/**
- * Delay between taking readings
- */
-#define LOOP_DELAY_MS 1
-
-/**
- * Delay before reboot
- */
-#define REBOOT_DELAY_MS 1000
-
-#define LED_MAX_PULSE_VALUE 1023
+const double LED_GREEN_SCALE = 0.25;
 
 /*
-  NodeMCU v3 Arduino/Physical pinout map
-  
-  Arduino | NodeMCU | Available for use
-  0       | D3      | HX711_SCK
-  1       | TX      | X
-  2       | D4      | 
-  3       | RX      | X
-  4       | D2      | HX711_DT
-  5       | D1      | 
-  6       |         | X
-  7       |         | X
-  8       |         | X
-  9       | S2      | X
-  10      | S3      | X
-  11      |         | X
-  12      | D6      | LED_GREEN
-  13      | D7      | 
-  14      | D5      | LED_BLUE
-  15      | D8      | LED_RED
-  16      | D0      | 
+ * Load sensor read interval
+ * 
+ * Reading the load sensor may take a few milliseconds and doing this on each cycle may be unnecessary.
+ * This value allows you to read the sensor every n'th cycle
  */
-#define BLUE_LED 14
-#define GREEN_LED 12
-#define RED_LED 15
-#define LOAD_SENSOR_DATA 4
-#define LOAD_SENSOR_CLOCK 0
+const int LOAD_SENSOR_READ_INTERVAL = 100;
+
+/*
+ * Loop delay in milliseconds
+ * 
+ * If your LED flashes too quickly or too slowly, adjusting this value will change the delay until the next cycle.
+ */
+const int LOOP_DELAY = 1;
+
+
+
+
+
+ 
+
+/*
+ * APPLICATION CODE
+ * 
+ * No need to make any changes below here
+ */
 
 #include <movingAvg.h>
-#include<ESP8266WiFi.h> 
-#include<home_wifi.h>
 #include <Q2HX711.h>
 
-/**
- * Application starts here
- */
-WiFiClient client;
-IPAddress server(IP_1,IP_2,IP_3,IP_4);
 Q2HX711 load_sensor(LOAD_SENSOR_DATA, LOAD_SENSOR_CLOCK);
+
 movingAvg smooth_weight(MOVING_AVERAGE_BUCKET_SIZE);
 
 int low_safe_level;
 int high_safe_level;
-int sensor_cycle = 0; // Current state of the cycle for sensor reading
-int transmit_cycle = 0;
-
+  
 //state used only for controlling light pulse cycle
 int pulse_brightness = 0;    // how bright the LED is during current cycle
 int fadeAmount = 1;    // how many points to fade the LED by
 
-boolean isFirstReading = true;
+//state used to determine when to read the weight sensor
+int sensor_cycle = 0; // Current state of the cycle for sensor reading
 
 void setup() {
+
   int range = MAXIMUM_WATER_LEVEL - MINIMUM_WATER_LEVEL;
   low_safe_level = (range * LOW_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
   high_safe_level = (range * HIGH_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
@@ -183,10 +164,6 @@ void setup() {
   Serial.begin(9600);
 
   smooth_weight.begin();
-
-  smooth_weight.reading(MINIMUM_WATER_LEVEL);
-
-  delay(STARTUP_DELAY_MS);
 }
 
 int readWeight() {
@@ -219,35 +196,6 @@ int readWeight() {
     
   return smooth_weight.getAvg();
 
-}
-
-void transmitReading(int value) {
-
-  if(transmit_cycle == LOAD_SENSOR_TRANSMIT_INTERVAL){
-    if(transmit_cycle >= LOAD_SENSOR_TRANSMIT_INTERVAL){
-      transmit_cycle = 0;
-    }
-
-    String json = "{\"load\":"+String(value)+"}";
-
-    if (client.connect(server, IP_PORT)) {      
-      // Make a HTTP request:
-      client.println("POST /data/live HTTP/1.0");
-      client.println("Content-Type: application/json");
-      client.print("Content-Length: ");
-      client.println(json.length());
-      client.println();
-      client.println(json);
-      client.println();
-      client.stop();
-    }else{
-      Serial.println("ERROR: Failed to connect");
-      reboot();
-    }
-    
-  }
-
-  transmit_cycle++; 
 }
 
 void bluePulse() {
@@ -285,7 +233,9 @@ void setColours(boolean red, boolean green, boolean blue, int brightness) {
 }
 
 void rgbSolid(boolean red, boolean green, boolean blue) {
-  setColours(red, green, blue, LED_MAX_PULSE_VALUE);
+  int full_brightness = 255;
+  
+  setColours(red, green, blue, full_brightness);
 }
 
 void rgbPulse(boolean red, boolean green, boolean blue) {
@@ -296,16 +246,14 @@ void rgbPulse(boolean red, boolean green, boolean blue) {
   pulse_brightness = pulse_brightness + fadeAmount;
 
   // reverse the direction of the fading at the ends of the fade:
-  if (pulse_brightness <= 0 || pulse_brightness >= LED_MAX_PULSE_VALUE) {
+  if (pulse_brightness <= 0 || pulse_brightness >= 255) {
     fadeAmount = -fadeAmount;
   }
 }
 
 void loop() {
-  connectToWifi();
 
   int current_weight = readWeight();
-
 
   if(current_weight <= low_safe_level) {
     bluePulse();
@@ -317,35 +265,6 @@ void loop() {
     redPulse();
   }
 
-  if(isFirstReading){
-    isFirstReading = false;
-  }else{
-    transmitReading(current_weight);
-  }
-  
-  delay(LOOP_DELAY_MS);
-}
+  delay(LOOP_DELAY);
 
-
-void reboot(){
-  delay(REBOOT_DELAY_MS);
-  Serial.println("Rebooting...");
-  ESP.restart();
-}
-
-
-void connectToWifi(){
-  if(WiFi.status() == WL_CONNECTED){
-    return;  
-  }
-  
-  Serial.print("Connecting to ");
-  Serial.println(WIFI_SSID); 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    reboot();
-  }
-  
-  Serial.println("");
-  Serial.println("WiFi connected"); 
 }

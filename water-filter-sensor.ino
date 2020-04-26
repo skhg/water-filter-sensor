@@ -1,30 +1,30 @@
 /*
  * CALIBRATION VALUES
- * 
- * All of these must be reset after disassembling and reassembling the base.
  */
 
 /*
- * Turn on debug output to allow for calibration. Turn off to stop the TX LED flashing
+ * Turn on debug output to allow for console calibration.
  * 
  * Values format:
- * MINIMUM_WATER_LEVEL, LOW_SAFE_LEVEL, HIGH_SAFE_LEVEL, MAXIMUM_WATER_LEVEL, CURRENT_WEIGHT, CURRENT_WEIGHT_SMOOTHED_AVERAGE
+ * MINIMUM_WATER_LEVEL, MAXIMUM_WATER_LEVEL, CURRENT_WEIGHT, CURRENT_WEIGHT_SMOOTHED_AVERAGE
  */
-const boolean DEBUG_ON = false;
+const boolean DEBUG_ON = true;
 
 /*
  * The maximum weight of the system. Above this level, water will overflow.
+ * This is a default value which is updated at first connection to the data logger.
  * 
  * (Residual in top tank + full lower tank)
  */
-const int MAXIMUM_WATER_LEVEL = 9345;
+int MAXIMUM_WATER_LEVEL = 121000;
 
 /*
- * The weight of the system when tap no longer flows out.
+ * The weight of the system when tap no longer flows out. Updated by the data logger.
+ * This is a default value which is updated at first connection to the data logger.
  * 
  * (Residual in top tank + residual in lower tank)
  */
-const int MINIMUM_WATER_LEVEL = 9179;
+int MINIMUM_WATER_LEVEL = 117000;
 
 
 
@@ -40,19 +40,19 @@ const int MINIMUM_WATER_LEVEL = 9179;
  */
 
 /*
- * The fractional fill level (0.0 to 1.0) below which we should alert to refill (Blue flashing)
- */
-const double LOW_SAFE_WATER_FRACTION = 0.3;
-
-/* 
- * The highest fractional fill level (0.0 to 1.0) we aim to reach when we refill
- */
-const double HIGH_SAFE_WATER_FRACTION = 0.8;
-
-/*
  * How many values to use for smoothing out the data and forming a moving average
  */
 const int MOVING_AVERAGE_BUCKET_SIZE = 20;
+
+/**
+ * IP Address and port to send data to
+ */
+#define IP_1 192
+#define IP_2 168
+#define IP_3 178
+#define IP_4 29
+#define IP_PORT 8080
+
 
 
 
@@ -68,16 +68,6 @@ const int MOVING_AVERAGE_BUCKET_SIZE = 20;
  */
 
 /*
- * Pin positions for the RGB LED. These must be connected to PWM pins in order to vary brightness
- * 
- * PWM pin locations:
- * https://www.arduino.cc/reference/en/language/functions/analog-io/analogwrite/
- */
-#define BLUE_LED 9
-#define GREEN_LED 10
-#define RED_LED 11
-
-/*
  * Pin positions for the HX-711 load sensor
  * 
  * These must be connected to analogue input pins.
@@ -85,26 +75,8 @@ const int MOVING_AVERAGE_BUCKET_SIZE = 20;
  * Analogue input pins:
  * https://www.arduino.cc/reference/en/language/functions/analog-io/analogread/
  */
-#define LOAD_SENSOR_DATA A0
-#define LOAD_SENSOR_CLOCK A1
-
-/*
- * LED total brightness factor
- * 
- * If your LED is too bright, reduce this value (0.0 to 1.0)
- */
-const double LED_MASTER_SCALE = 1.0;
-
-/*
- * LED relative brightness factors
- * 
- * Each of the RGB LED's components may appear to be slightly brighter than the others.
- * Set the dimmest LED to 1.0 and adjust the others accordingly (0.0 to 1.0)
- * 
- */
-const double LED_BLUE_SCALE = 0.2;
-const double LED_RED_SCALE = 1;
-const double LED_GREEN_SCALE = 0.25;
+#define LOAD_SENSOR_DATA 14  // D5 on NodeMCU ESP8266 Lolin v3
+#define LOAD_SENSOR_CLOCK 12 // D6 on NodeMCU ESP8266 Lolin v3
 
 /*
  * Load sensor read interval
@@ -112,16 +84,24 @@ const double LED_GREEN_SCALE = 0.25;
  * Reading the load sensor may take a few milliseconds and doing this on each cycle may be unnecessary.
  * This value allows you to read the sensor every n'th cycle
  */
-const int LOAD_SENSOR_READ_INTERVAL = 100;
+const int LOAD_SENSOR_TRANSMIT_INTERVAL = 50;
 
 /*
- * Loop delay in milliseconds
- * 
- * If your LED flashes too quickly or too slowly, adjusting this value will change the delay until the next cycle.
+ * Screen dimensions and setup
  */
-const int LOOP_DELAY = 1;
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
+/**
+ * Delay before reboot
+ */
+#define REBOOT_DELAY_MS 1000
 
+/**
+ * How many seconds to wait before WiFi connection is established, or the system will reboot
+ */
+#define WIFI_CONNECT_TIMEOUT_SECONDS 30
 
 
 
@@ -134,54 +114,60 @@ const int LOOP_DELAY = 1;
  */
 
 #include <movingAvg.h>
-#include <Q2HX711.h>
+#include "HX711.h"
+#include <ArduinoJson.h>
+#include <SPI.h>
+#include <Wire.h>
+#include<ESP8266WiFi.h> 
+#include<home_wifi.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-Q2HX711 load_sensor(LOAD_SENSOR_DATA, LOAD_SENSOR_CLOCK);
-
+HX711 load_sensor;
+WiFiClient client;
+IPAddress server(IP_1,IP_2,IP_3,IP_4);
 movingAvg smooth_weight(MOVING_AVERAGE_BUCKET_SIZE);
+StaticJsonDocument<200> doc;
 
-int low_safe_level;
-int high_safe_level;
-  
-//state used only for controlling light pulse cycle
-int pulse_brightness = 0;    // how bright the LED is during current cycle
-int fadeAmount = 1;    // how many points to fade the LED by
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+int transmit_cycle = LOAD_SENSOR_TRANSMIT_INTERVAL;
 
-//state used to determine when to read the weight sensor
-int sensor_cycle = 0; // Current state of the cycle for sensor reading
 
 void setup() {
+  Serial.begin(115200);
 
-  int range = MAXIMUM_WATER_LEVEL - MINIMUM_WATER_LEVEL;
-  low_safe_level = (range * LOW_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
-  high_safe_level = (range * HIGH_SAFE_WATER_FRACTION) + MINIMUM_WATER_LEVEL;
+  setupScreen();
+  drawText("Booting...", 3);
   
-  // LED pins are all outputs
-  pinMode(BLUE_LED, OUTPUT);
-  pinMode(GREEN_LED, OUTPUT);
-  pinMode(RED_LED, OUTPUT);
+  int range = MAXIMUM_WATER_LEVEL - MINIMUM_WATER_LEVEL;
 
-  Serial.begin(9600);
-
+  delay(1000); // Give the weight sensor a moment to initialise
+  
   smooth_weight.begin();
+  load_sensor.begin(LOAD_SENSOR_DATA, LOAD_SENSOR_CLOCK);
+
+  while(!load_sensor.is_ready()){
+    Serial.println("Waiting for load sensor...");
+    delay(1000);
+  }
+}
+
+void setupScreen() {
+  
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
 }
 
 int readWeight() {
 
-  if(sensor_cycle == LOAD_SENSOR_READ_INTERVAL){
-    if(sensor_cycle >= LOAD_SENSOR_READ_INTERVAL){
-      sensor_cycle = 0;
-    }
-
-    int curr_weight = (load_sensor.read() / 1000);
+  if (load_sensor.is_ready()) {
+    int curr_weight = (load_sensor.read() / 10);
     smooth_weight.reading(curr_weight);
-
+  
     if(DEBUG_ON){
       Serial.print(MINIMUM_WATER_LEVEL);
-      Serial.print(",");
-      Serial.print(low_safe_level);
-      Serial.print(",");
-      Serial.print(high_safe_level);
       Serial.print(",");
       Serial.print(MAXIMUM_WATER_LEVEL);
       Serial.print(",");
@@ -189,82 +175,147 @@ int readWeight() {
       Serial.print(",");
       Serial.println(smooth_weight.getAvg());
     }
-    
   }
-
-  sensor_cycle++;
     
   return smooth_weight.getAvg();
-
 }
 
-void bluePulse() {
-  rgbPulse(false, false, true);
+void drawText(String text, int textSize) {
+  display.clearDisplay();
+
+  display.setTextSize(textSize);
+  display.setCursor(0,20);
+  display.setTextColor(SSD1306_WHITE);
+  display.println(text);
+
+  display.display();
+  delay(50); // Delay added because writing to the screen too frequently causes it not to update at all
 }
 
-void solidGreen() {
-  rgbSolid(false, true, false);
-}
-
-void solidBlue() {
-  rgbSolid(false, false, true);
-}
-
-void redPulse() {
-  rgbPulse(true, false, false);
-}
-
-void setColours(boolean red, boolean green, boolean blue, int brightness) {
-  if(blue) {
-    analogWrite(BLUE_LED, brightness * LED_MASTER_SCALE * LED_BLUE_SCALE);
-  }else{
-    analogWrite(BLUE_LED, 0);
+int getCurrentFillPercent(int current_weight) {
+  if(current_weight <= MINIMUM_WATER_LEVEL){
+    return 0; // Negative fill percentages don't make sense - usually this will occur only when the top tank is taken off
   }
-  if(red) {
-    analogWrite(RED_LED, brightness * LED_MASTER_SCALE * LED_RED_SCALE);
-  }else{
-    analogWrite(RED_LED, 0);
-  }
-  if(green) {
-    analogWrite(GREEN_LED, brightness * LED_MASTER_SCALE * LED_GREEN_SCALE);
-  }else{
-    analogWrite(GREEN_LED, 0);
-  }
-}
 
-void rgbSolid(boolean red, boolean green, boolean blue) {
-  int full_brightness = 255;
-  
-  setColours(red, green, blue, full_brightness);
-}
+  double fraction = ((double)current_weight - (double)MINIMUM_WATER_LEVEL) / ((double)MAXIMUM_WATER_LEVEL - (double)MINIMUM_WATER_LEVEL) * 100;
 
-void rgbPulse(boolean red, boolean green, boolean blue) {
-
-  setColours(red, green, blue, pulse_brightness);
-  
-  // change the brightness for next time through the loop:
-  pulse_brightness = pulse_brightness + fadeAmount;
-
-  // reverse the direction of the fading at the ends of the fade:
-  if (pulse_brightness <= 0 || pulse_brightness >= 255) {
-    fadeAmount = -fadeAmount;
-  }
+  return (int)fraction;
 }
 
 void loop() {
+  connectToWifi();
 
-  int current_weight = readWeight();
+  int currentWeight = readWeight();
+  int fillPercent = getCurrentFillPercent(currentWeight);
 
-  if(current_weight <= low_safe_level) {
-    bluePulse();
-  } else if(current_weight > low_safe_level && current_weight <= high_safe_level) {
-    solidBlue();
-  } else if(current_weight > high_safe_level && current_weight <= MAXIMUM_WATER_LEVEL) {
-    solidGreen();
-  } else if(current_weight > MAXIMUM_WATER_LEVEL) {
-    redPulse();
+  String percentText = String(fillPercent) + "%";
+    
+  drawText(percentText, 5);
+
+  transmitReading(currentWeight, fillPercent);
+}
+
+void transmitReading(int weight, int fillPercent) {
+
+  if(transmit_cycle == LOAD_SENSOR_TRANSMIT_INTERVAL){
+    if(transmit_cycle >= LOAD_SENSOR_TRANSMIT_INTERVAL){
+      transmit_cycle = 0;
+    }
+
+    // Get the latest configuration for high/low levels and update if necessary
+    if (client.connect(server, IP_PORT)) {      
+      client.print("GET /kitchen/water-filter/configuration HTTP/1.1\r\nHost: hallway\r\nConnection: close\r\n\r\n");
+
+      String httpConversation = "";      
+      while (client.connected() || client.available())
+      {
+        if (client.available())
+        {
+          httpConversation += client.readStringUntil('\n');
+        }
+      }
+      client.stop();
+
+      String allJson = httpConversation.substring(httpConversation.indexOf('{'), httpConversation.indexOf('}') + 1);
+      Serial.println(allJson);
+
+      deserializeJson(doc, allJson);
+      MAXIMUM_WATER_LEVEL = doc["fullLevel"];
+      MINIMUM_WATER_LEVEL = doc["emptyLevel"];
+      
+    }else{
+      Serial.println("ERROR: Failed to connect");
+      reboot();
+    }
+
+    // Try to send the latest reading to the logger
+    if (client.connect(server, IP_PORT)) {      
+      // Make a HTTP request:
+      String json = "{\"load\":"+String(weight)+",\"fillPercentage\":"+String(fillPercent)+"}";
+      client.println("POST /kitchen/water-filter HTTP/1.0");
+      client.println("Content-Type: application/json");
+      client.print("Content-Length: ");
+      client.println(json.length());
+      client.println();
+      client.println(json);
+      client.println();
+      client.stop();
+    }else{
+      Serial.println("ERROR: Failed to connect");
+      reboot();
+    }
+    
   }
 
-  delay(LOOP_DELAY);
+  transmit_cycle++; 
+}
 
+void reboot(){
+  delay(REBOOT_DELAY_MS);
+  Serial.println("Rebooting...");
+  ESP.restart();
+}
+
+void connectToWifi(){
+  String wifiConnectionInfo = "Connectingto WiFi"; //The newline wrap on the 128x64 OLED makes this appear correctly
+  
+  if(WiFi.status() == WL_CONNECTED){
+    return;  
+  }
+
+  drawText(wifiConnectionInfo, 2);
+  
+  Serial.print("Connecting to ");
+  Serial.println(WIFI_SSID); 
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  int connectAttempts = 0;
+  int connectRetryInterval = 500;
+  int rebootCountdown = WIFI_CONNECT_TIMEOUT_SECONDS * 1000;
+
+  String dotsString = "";
+
+  // Displays a nice progression on the screen until the connection can be established
+  while (WiFi.status() != WL_CONNECTED) {
+
+    if(dotsString.length() < 3){
+      dotsString = dotsString + ".";
+    }else{
+      dotsString = "";
+    }
+    
+    drawText(wifiConnectionInfo + dotsString, 2);
+    delay(connectRetryInterval);
+    
+    Serial.print(".");
+
+    rebootCountdown = rebootCountdown - connectRetryInterval;
+    
+    if(rebootCountdown < 0) {
+      reboot();
+    }
+  }
+  
+  Serial.println("");
+  Serial.println("WiFi connected"); 
 }
