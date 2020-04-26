@@ -1,5 +1,5 @@
 # water-filter-sensor
-A smart(er) ceramic water filter for my kitchen.
+A smart(er) ceramic water filter for my kitchen. This is the second version. [Here](./v1) you can see the first attempt.
 
 ## Concept
 We use a [ceramic water filter](https://en.wikipedia.org/wiki/Ceramic_water_filter) at home for our drinking water and ice-making. Normally we try to keep it full, so there's always about 2L available at any time. However to be sure we haven't over-filled, we have to remove the top section to see how much is left in the bottom. Obviously, this minor effort is totally unacceptable, so I built a sensor system to tell us how full the tank is.
