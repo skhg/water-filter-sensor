@@ -20,25 +20,21 @@ Electronics
 
 * 1 [Arduino nano](https://www.amazon.de/gp/product/B01C9J7NGS/ref=ppx_yo_dt_b_asin_title_o02__o00_s00?ie=UTF8&psc=1)
 * 1 HX-711 compatible [load sensor](https://www.amazon.de/gp/product/B075KKH416/ref=ppx_yo_dt_b_asin_title_o03__o00_s00?ie=UTF8&psc=1)
-* 1 [RGB LED](https://www.conrad.de/de/makerfactory-led-modul-vma307-passend-fuer-arduino-boards-arduino-arduino-uno-fayaduino-freeduino-seeeduino-see-1612767.html)
+* 1 [OLED Screen](https://www.amazon.de/-/en/gp/product/B01L9GC470/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
+* 1 set of 4 [load cells](https://www.amazon.de/-/en/Weissazi-Personal-Scales-Resistance-Measuring/dp/B07QB2DWMQ/ref=sr_1_16?dchild=1&keywords=arduino+ladungssensor&qid=1587932332&sr=8-16) - I actually got mine from a broken bathroom scales.
 * [Ribbon cable](https://www.amazon.de/gp/product/B076CLY8NH/ref=oh_aui_detailpage_o00_s00?ie=UTF8&psc=1)
 * [Jumper pin connectors](https://www.amazon.de/gp/product/B01MRSUEHD/ref=oh_aui_detailpage_o01_s00?ie=UTF8&psc=1)
-* 2 [mini breadboards](https://www.amazon.de/gp/product/B01M9CHKO4/ref=oh_aui_detailpage_o01_s00?ie=UTF8&psc=1)
 
 Other:
 
   * Soldering iron
   * 3rd hand
-  * Small screws (15mm)
-  * Small bolts (35mm and 40mm)
-  * Bamboo boards
-  * Various wooden parts
-  * Drill and assorted bits
-  * Various small pliers, screwdriver, common tools
+  * Bamboo board
+  * Adjustable legs
 
 ## Construction
 
-The sensor must be mounted between two plates in order to work. The [flexing](https://en.wikipedia.org/wiki/Load_cell) of the sensor as weight is applied is detected and converted to a weight reading. I built this out of 2 small bamboo chopping boards, which are light and strong. The rest of the wooden pieces I bought at [Bauhaus](https://www.bauhaus.info/)
+The 4 sensors (should) evenly distribute the weight between each other. The [flexing](https://en.wikipedia.org/wiki/Load_cell) of the sensor as weight is applied is detected and converted to a load reading.
 
 ### Soldering the HX-711
 Many HX-711 sensors come in packs with a board and loose pins. I had never soldered anything except a broken [George Foreman](https://en.wikipedia.org/wiki/George_Foreman_Grill) before this project so it was quite an experience to learn how to do this. Fortunately YouTube is full of tutorial videos. References at the end.
