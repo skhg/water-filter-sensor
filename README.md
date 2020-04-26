@@ -13,7 +13,7 @@ Because i'm going totally overboard, it's also WiFi connected, remotely monitore
 ## Overview
 The water filter now sits on top of a circular wooden board, with adjustable legs I found in a waste bin at IKEA. Each leg has a HX-711 compatible load sensor glued to the bottom. Under the board, there's a plastic box to house the electronics. A longer ribbon cable extends up to eye level where a tiny OLED display shows the estimated fill percentage.
 
-![Diagram](docs/fill_levels.png "Diagram")
+<img src="docs/system.png" width="50%"><img src="docs/fill_levels.png" width="50%">
 
 ## Materials required
 Electronics
