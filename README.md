@@ -4,10 +4,14 @@ A smart(er) ceramic water filter for my kitchen. This is the second version. [He
 ## Concept
 We use a [ceramic water filter](https://en.wikipedia.org/wiki/Ceramic_water_filter) at home for our drinking water and ice-making. Normally we try to keep it full, so there's always about 2L available at any time. However to be sure we haven't over-filled, we have to remove the top section to see how much is left in the bottom. Obviously, this minor effort is totally unacceptable, so I built a sensor system to tell us how full the tank is.
 
-![Finished project](docs/photos/IMG_4630.jpg "Finished project")
+![Finished project](docs/finished.jpeg "Finished project")
+
+Because i'm going totally overboard, it's also WiFi connected, remotely monitored and remotely configurable. Remote config/monitoring is done using my [household data logger](https://github.com/skhg/household-data-logger) project.
+
+![Grafana dashboard](docs/grafana.png)
 
 ## Overview
-The water filter now sits on top of a mounting frame, under which there is a HX-711 compatible weight sensor. Alongside the base of the filter, an RGB LED displays different colours to indicate fill level or warning states.
+The water filter now sits on top of a circular wooden board, with adjustable legs I found in a waste bin at IKEA. Each leg has a HX-711 compatible load sensor glued to the bottom. Under the board, there's a plastic box to house the electronics. A longer ribbon cable extends up to eye level where a tiny OLED display shows the estimated fill percentage.
 
 ![Diagram](docs/fill_levels.png "Diagram")
 
