@@ -97,6 +97,11 @@ See the full Arduino C++ code in [water-filter-sensor.ino](water-filter-sensor.i
 Dependencies:
  * [movingAvg](https://github.com/JChristensen/movingAvg)
  * [Q2HX711](https://github.com/queuetue/Q2-HX711-Arduino-Library)
+ * [home_wifi](https://github.com/skhg/home_wifi) configuration
+ * [ArduinoJson](https://arduinojson.org/)
+ * [ESP8266WiFi](https://github.com/esp8266/Arduino/tree/master/libraries/ESP8266WiFi)
+ * [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library)
+ * [Adafruit_SSD1306](https://github.com/adafruit/Adafruit_SSD1306)
 
 ## Circuit
 
