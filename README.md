@@ -18,7 +18,7 @@ The water filter now sits on top of a circular wooden board, with adjustable leg
 ## Materials required
 Electronics
 
-* 1 [Arduino nano](https://www.amazon.de/gp/product/B01C9J7NGS/ref=ppx_yo_dt_b_asin_title_o02__o00_s00?ie=UTF8&psc=1)
+* 1 [NodeMCU v3 ESP8266](https://www.amazon.de/-/en/gp/product/B074Q2WM1Y/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
 * 1 HX-711 compatible [load sensor](https://www.amazon.de/gp/product/B075KKH416/ref=ppx_yo_dt_b_asin_title_o03__o00_s00?ie=UTF8&psc=1)
 * 1 [OLED Screen](https://www.amazon.de/-/en/gp/product/B01L9GC470/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
 * 1 set of 4 [load cells](https://www.amazon.de/-/en/Weissazi-Personal-Scales-Resistance-Measuring/dp/B07QB2DWMQ/ref=sr_1_16?dchild=1&keywords=arduino+ladungssensor&qid=1587932332&sr=8-16) - I actually got mine from a broken bathroom scales.
@@ -32,34 +32,64 @@ Other:
   * Bamboo board
   * Adjustable legs
 
+## Connecting the load cells
+
+Normally, load cells come with matching wire colours. Unfortunately the ones I scavenged from the old bathroom scale came with different 2 different sets of wire colours, so I had to manually work out which was which.
+
+![experimenting](./docs/experimenting-1.jpeg)
+
+Eventually I found [this diagram](http://blog.medien.ifi.lmu.de/swh/2018/09/10/hx711-how-to-measure-incorrectly/), and manually labelled the wires to match my own:
+
+![diagram](./docs/FCDBMOBJ822Y1Q6.LARGE.jpg)
+
+And got it wired up the same way...
+![experimenting](./docs/experimenting-2.jpeg)
+
+Circuit diagram of the same thing, with the real world wire colours.
+
+![circuit](./docs/sensor_pads_bb.png)
+
 ## Construction
 
 The 4 sensors (should) evenly distribute the weight between each other. The [flexing](https://en.wikipedia.org/wiki/Load_cell) of the sensor as weight is applied is detected and converted to a load reading.
 
-### Soldering the HX-711
-Many HX-711 sensors come in packs with a board and loose pins. I had never soldered anything except a broken [George Foreman](https://en.wikipedia.org/wiki/George_Foreman_Grill) before this project so it was quite an experience to learn how to do this. Fortunately YouTube is full of tutorial videos. References at the end.
+The load cells need a little space between themselves and the legs I used, so I glued some cork blocks in between, to allow the sensor space to flex.
 
-![HX711](docs/photos/IMG_1149.jpg "Bare sensor")
+Everything comes together in a little plastic box to make it a bit more protected from any nearby water splashes. 
 
-### Lower board
+![looking up](./docs/looking-up.jpeg)
 
-The lower board has four 3cm legs attached to keep it above any water that might collect on the counter. Near the centre it has two drilled holes to support the lower side of the sensor, which sits atop a small wooden block. On one side, a wider beam of wood provides a hinge to support half the filter's weight, and reduce the load on the sensor. This beam has some indentations to allow space for the LED module, and holes to fit in bolts that will hold on the top board.
+The screen is wedged inside the cap of an old moisturiser jar, just like I used for the [Raspberry Pi killswitch](https://github.com/skhg/raspberrypi-killswitch). These little plastic caps are really versatile for small projects. Since I didn't have any proper tools to cut a hole, I drew a rectangle on the front and melted a hole through it with my soldering iron. Probably toxic and not the best idea.
+ 
+![oled](./docs/oled.jpeg)
 
-![Unfolded](docs/photos/IMG_1173.jpg "Unfolded base")
+## WiFi connection
 
-### Upper board
+### Calibration
+For calibration, we need to know what reading the load sensor gives when the tank is empty, and when it's full. Then we can simply get the current reading and work out a percentage of the range. Normally, calibration would mean plugging the board into a laptop over USB, and uploading a new version of the `.ino` sketch with updated high/low values.
 
-This board will seat the filter, so on top it has four small wooden blocks to provide alignment for the filter's base. The filter should be aligned centrally so the weight is evenly distributed between the sensor and the supporting beam. Otherwise recalibration would be needed every time the filter is moved. On one side two holes fit the bolts that connect the top board to the other side of the sensor. On the other side is the large hole where the LED will poke through.
+So instead, I use a `GET` endpoint on my [household data logger](https://github.com/skhg/household-data-logger) project, to return the current calibration values over HTTP. The filter looks them up automatically so they can be changed at any time. The message received from the server looks like:
 
-![Top alignment points](docs/photos/IMG_1155.jpg "Alignment points")
+```json
+{
+    "fullLevel" : 121000,
+    "emptyLevel" : 117000
+}
+```
 
-On the underside, two mini breadboards hold the Arduino, the HX-711 board, and their connections. They're attached to the board with narrow bolts so their position could be adjusted later. On the side which sits above the support beam, the LED hole has a chunk taken out near it, to allow the module and connecting cables space to fit.
+and the filter uses this to reset its own default values each time an update is received.
 
-### Mounting
+### Logging
+The board also sends back it's current load level to the logger approximately every 2 seconds. This is also done using JSON over HTTP in a format that looks like
 
-After bolting together the boards and tidying the cables out of the way, the water filter can be sat on top. Nice.
+```json
+{
+    "load" : 1234.56,
+    "fillPercentage" : 92.24
+}
+```
 
-![Mounted](docs/photos/IMG_4626.jpg "Mounted")
+I record this in a time-series database and use it to create the Grafana dashboard shown at the top.
 
 ## Code
 See the full Arduino C++ code in [water-filter-sensor.ino](water-filter-sensor.ino). 
@@ -70,21 +100,13 @@ Dependencies:
 
 ## Circuit
 
-![Circuit diagram](docs/water-filter_bb.jpg "Circuit diagram")
+![board photo](docs/board.jpeg "Circuit photo")
 
-This can also be viewed in the [Fritzing](http://fritzing.org/) software using the [water-filter.fzz](water-filter.fzz) file. 
+The underside of this has the mounting pins for the Arduino board, but I forgot to take a photo.
 
-## Calibration
+![circuit diagram](./docs/water_filter_board_bb.png "Circuit diagram")
 
-Depending on the tension in the bolts connecting the board, sensor and support beam, the force applied to the sensor may vary quite a lot. It's important to recalibrate the sensor after taking the system apart or changing it's location.
-
-By enabling `DEBUG` mode and viewing the output we can determine what the sensor reads when the tanks are full or empty, and use this to change the parameters defined at the top of [water-filter-sensor.ino](water-filter-sensor.ino).
-
-Debug output also prints static lines which can be viewed in the Arduino [plotter](https://learn.adafruit.com/experimenters-guide-for-metro/circ08-using%20the%20arduino%20serial%20plotter) to show the various limits or trigger levels that have been set. Filling and emptying the tank can easily show how the level varies in the real-time graph.
-
-### Configuration
-
-Many other configuration options are available at the top of [water-filter-sensor.ino](water-filter-sensor.ino) including relative LED brightness, smoothness or accuracy of sensor data, and at what levels you want to get high/low water alerts. 
+This can also be viewed in the [Fritzing](http://fritzing.org/) software using the [water_filter_board.fzz](./docs/water_filter_board.fzz) file. 
 
 ## References
 These tutorials proved useful during the project
